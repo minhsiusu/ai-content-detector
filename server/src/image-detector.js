@@ -1,5 +1,7 @@
 const axios = require("axios");
 const c2paDetector = require("./c2pa-detector");
+const { downloadPublicImage } = require("./image-fetcher");
+const localImageForensics = require("./local-image-forensics");
 
 const SIGHTENGINE_ENDPOINT =
   "https://api.sightengine.com/1.0/check.json";
@@ -92,7 +94,24 @@ exports.analyze = async ({ imageUrl }) => {
   }
 
   let response;
-  const c2paPromise = c2paDetector.inspectImageUrl(imageUrl);
+  const downloadedImagePromise = downloadPublicImage(imageUrl);
+  const c2paPromise = downloadedImagePromise
+    .then(image => c2paDetector.inspectImageBuffer(
+      image.buffer,
+      image.extension
+    ))
+    .catch(error => ({
+      status: "unavailable",
+      exists: false,
+      error: error.message
+    }));
+  const localForensicsPromise = downloadedImagePromise
+    .then(image => localImageForensics.analyze(image.buffer))
+    .catch(error => ({
+      available: false,
+      error: error.message,
+      warning: "本機影像鑑識無法完成，不影響 Sightengine 的像素模型結果。"
+    }));
   try {
     response = await axios.get(SIGHTENGINE_ENDPOINT, {
       timeout: 45000,
@@ -129,7 +148,10 @@ exports.analyze = async ({ imageUrl }) => {
   }
 
   const score = Math.max(0, Math.min(100, Math.round(rawScore * 100)));
-  const c2pa = await c2paPromise;
+  const [c2pa, localForensics] = await Promise.all([
+    c2paPromise,
+    localForensicsPromise
+  ]);
   return {
     score,
     label: "AI 生成或 AI 編輯像素風險",
@@ -140,6 +162,7 @@ exports.analyze = async ({ imageUrl }) => {
     ),
     operations: response.data.request && response.data.request.operations,
     c2pa,
+    localForensics,
     warning: "此分數來自像素模型，只代表模型信心，不能單獨證明圖片來源。"
   };
 };

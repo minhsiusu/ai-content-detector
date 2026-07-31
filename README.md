@@ -1,93 +1,78 @@
-# ai-content-detector
+# AI Content Detector
 
+這是一套 Chrome Manifest V3 擴充功能，可分析繁體中文文章與網頁圖片的 AI 內容風險。後端使用 Gemini 分析文字、Sightengine `genai` 分析圖片，以 C2PA 內容憑證補充圖片來源資訊，並提供不消耗 API 額度的本機影像鑑識訊號。
 
+偵測結果只代表風險訊號，不能證明作者身分或內容來源。
 
-## Getting started
+## 專案結構
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin https://gitlab.com/rty4560000/ai-content-detector.git
-git branch -M main
-git push -uf origin main
+```text
+extension/  Chrome 擴充功能
+server/     Node.js + Express API
 ```
 
-## Integrate with your tools
+本專案不包含舊有的 Nuxt、Vue、Firebase、購物網站或 Copyleaks 程式。
 
-* [Set up project integrations](https://gitlab.com/rty4560000/ai-content-detector/-/settings/integrations)
+## 環境需求
 
-## Collaborate with your team
+- Node.js 14.21.3 或更新版本
+- Chrome 或 Chromium 瀏覽器
+- Gemini API Key
+- Sightengine API 帳號與密鑰（圖片像素分析）
+- `c2patool.exe`（Windows 上的 C2PA 憑證檢查）
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+## 後端設定與啟動
 
-## Test and Deploy
+在 `server/.env` 設定：
 
-Use the built-in continuous integration in GitLab.
+```dotenv
+PORT=3200
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+GEMINI_ENABLED=true
+GEMINI_API_KEY=請填自己的金鑰
+GEMINI_MODEL=gemini-3.5-flash-lite
 
-***
+SIGHTENGINE_ENABLED=true
+SIGHTENGINE_API_USER=請填自己的帳號
+SIGHTENGINE_API_SECRET=請填自己的密鑰
+```
 
-# Editing this README
+請勿提交 `server/.env` 或在前端程式放置 API Key。專案刻意不提供 `.env.example`；上方僅列出必要欄位。
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+安裝、檢查、測試及啟動：
 
-## Suggestions for a good README
+```powershell
+cd server
+npm install
+npm run check
+npm test
+npm run dev
+```
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+後端預設位址為 `http://localhost:3200`，健康檢查位址為：
 
-## Name
-Choose a self-explaining name for your project.
+```text
+http://localhost:3200/health
+```
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+## 載入 Chrome 擴充功能
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+1. 開啟 `chrome://extensions`。
+2. 啟用「開發人員模式」。
+3. 選擇「載入未封裝項目」。
+4. 選取本專案的 `extension` 資料夾。
+5. 修改擴充功能後，請重新載入擴充功能並重新整理測試頁面。
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+目前後端與擴充功能預設使用 `http://localhost:3200`。
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+## 功能與限制
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+- 文字分析最少 255 字、最多 50,000 字，且文章須以繁體中文為主。
+- 圖片像素分析目前需要可公開存取的 `http` 或 `https` 圖片網址。
+- 圖片分析會額外檢查圖片品質、雜訊殘差、FFT 頻率分布、邊緣一致性，以及 JPEG／縮放後的特徵穩定性。
+- 本機鑑識目前解析 JPEG 與 PNG；其他格式仍可使用 Sightengine 與 C2PA，介面會標示本機分析不可用。
+- 本機鑑識規則尚未以真人／AI 圖片資料集校準，只作為 Sightengine 與 C2PA 的輔助說明，不會單獨證明圖片來源。
+- `blob:`、Canvas、登入後圖片與無公開網址圖片尚未完整支援。
+- C2PA 沒有找到憑證只表示來源未知，不能據此判定圖片不是 AI 生成。
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+完整交接資訊與後續開發方向請參閱 [PROJECT_HANDOFF_AND_MIGRATION.md](PROJECT_HANDOFF_AND_MIGRATION.md)。

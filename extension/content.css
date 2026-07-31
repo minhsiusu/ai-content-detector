@@ -296,81 +296,9 @@
   color: #64748b !important;
 }
 
-.ai-detector-highlight {
-  position: relative !important;
-  border-radius: 5px !important;
-  padding: 8px !important;
-}
-
-.ai-detector-highlight.ai-detector-low {
-  background: rgba(34, 197, 94, 0.14) !important;
-  border-left: 4px solid #22c55e !important;
-}
-
-.ai-detector-highlight.ai-detector-medium {
-  background: rgba(234, 179, 8, 0.16) !important;
-  border-left: 4px solid #eab308 !important;
-}
-
-.ai-detector-highlight.ai-detector-high {
-  background: rgba(239, 68, 68, 0.16) !important;
-  border-left: 4px solid #ef4444 !important;
-}
-
-.ai-detector-badge {
-  display: inline-block !important;
-  margin-left: 8px !important;
-  padding: 2px 8px !important;
-  border-radius: 999px !important;
-  color: #ffffff !important;
-  font: 700 12px/1.5 Arial, "Noto Sans TC", sans-serif !important;
-}
-
-.ai-detector-badge.ai-detector-low {
-  background: #16a34a !important;
-}
-
-.ai-detector-badge.ai-detector-medium {
-  background: #ca8a04 !important;
-}
-
-.ai-detector-badge.ai-detector-high {
-  background: #dc2626 !important;
-}
-
 ::highlight(ai-detector-selection) {
   background-color: rgba(139, 92, 246, 0.34);
   color: inherit;
-}
-
-#ai-detector-overlay {
-  position: fixed !important;
-  z-index: 2147483646 !important;
-  inset: 0 !important;
-  background: rgba(15, 23, 42, 0.34) !important;
-  cursor: crosshair !important;
-  user-select: none !important;
-}
-
-#ai-detector-selection-box {
-  position: fixed !important;
-  border: 2px solid #8b5cf6 !important;
-  background: rgba(139, 92, 246, 0.13) !important;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8) inset !important;
-  pointer-events: none !important;
-}
-
-.ai-detector-area-help {
-  position: fixed !important;
-  top: 20px !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  padding: 9px 16px !important;
-  border-radius: 999px !important;
-  background: #111827 !important;
-  color: #ffffff !important;
-  font: 700 13px/1.5 Arial, "Noto Sans TC", sans-serif !important;
-  pointer-events: none !important;
 }
 
 .ai-detector-image-picking,

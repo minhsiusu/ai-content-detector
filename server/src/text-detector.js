@@ -69,10 +69,37 @@ const createModelError = (message, code, statusCode) => {
   return error;
 };
 
-const clampScore = value => {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return null;
-  return Math.max(0, Math.min(100, Math.round(number)));
+const validateScore = (value, fieldName) => {
+  if (!Number.isInteger(value) || value < 0 || value > 100) {
+    throw createModelError(
+      `Gemini 回傳的 ${fieldName} 格式不正確。`,
+      "MODEL_INVALID_RESPONSE",
+      502
+    );
+  }
+  return value;
+};
+
+const validateEnum = (value, allowed, fieldName) => {
+  if (typeof value !== "string" || !allowed.includes(value)) {
+    throw createModelError(
+      `Gemini 回傳的 ${fieldName} 格式不正確。`,
+      "MODEL_INVALID_RESPONSE",
+      502
+    );
+  }
+  return value;
+};
+
+const validateText = (value, fieldName) => {
+  if (typeof value !== "string" || !value.trim()) {
+    throw createModelError(
+      `Gemini 回傳的 ${fieldName} 格式不正確。`,
+      "MODEL_INVALID_RESPONSE",
+      502
+    );
+  }
+  return value.trim();
 };
 
 const isTextModelConfigured = () => Boolean(
@@ -161,24 +188,15 @@ const validateSignal = signal => {
     );
   }
 
-  const category = typeof signal.category === "string" && signal.category.trim();
-  const severity = typeof signal.severity === "string" && signal.severity.trim();
-  const evidence = typeof signal.evidence === "string" && signal.evidence.trim();
-  const reason = typeof signal.reason === "string" && signal.reason.trim();
-
-  if (!category || !severity || !evidence || !reason) {
-    throw createModelError(
-      "Gemini 回傳的信號格式不正確。",
-      "MODEL_INVALID_RESPONSE",
-      502
-    );
-  }
-
   return {
-    category,
-    severity,
-    evidence,
-    reason
+    category: validateText(signal.category, "信號分類"),
+    severity: validateEnum(
+      signal.severity,
+      ["low", "medium", "high"],
+      "信號嚴重度"
+    ),
+    evidence: validateText(signal.evidence, "信號證據"),
+    reason: validateText(signal.reason, "信號原因")
   };
 };
 
@@ -202,41 +220,34 @@ const parseAnalysis = text => {
     );
   }
 
-  const aiRiskScore = clampScore(analysis.aiRiskScore);
-  const evasionRiskScore = clampScore(analysis.evasionRiskScore);
-  if (aiRiskScore === null || evasionRiskScore === null) {
+  if (!Array.isArray(analysis.signals) || analysis.signals.length > 12) {
     throw createModelError(
-      "Gemini 回傳的風險分數格式不正確。",
+      "Gemini 回傳的信號格式不正確。",
       "MODEL_INVALID_RESPONSE",
       502
     );
   }
-
-  if (typeof analysis.confidence !== "string" || typeof analysis.label !== "string") {
-    throw createModelError(
-      "Gemini 回傳的分類欄位格式不正確。",
-      "MODEL_INVALID_RESPONSE",
-      502
-    );
-  }
-
-  if (typeof analysis.summary !== "string" || typeof analysis.limitations !== "string") {
-    throw createModelError(
-      "Gemini 回傳的摘要欄位格式不正確。",
-      "MODEL_INVALID_RESPONSE",
-      502
-    );
-  }
-
-  const signals = Array.isArray(analysis.signals)
-    ? analysis.signals.slice(0, 12).map(validateSignal)
-    : [];
 
   return {
     ...analysis,
-    aiRiskScore,
-    evasionRiskScore,
-    signals
+    aiRiskScore: validateScore(analysis.aiRiskScore, "AI 風險分數"),
+    evasionRiskScore: validateScore(
+      analysis.evasionRiskScore,
+      "規避風險分數"
+    ),
+    confidence: validateEnum(
+      analysis.confidence,
+      ["low", "medium", "high"],
+      "信心程度"
+    ),
+    label: validateEnum(
+      analysis.label,
+      ["low", "medium", "high"],
+      "風險分類"
+    ),
+    signals: analysis.signals.map(validateSignal),
+    summary: validateText(analysis.summary, "摘要"),
+    limitations: validateText(analysis.limitations, "限制說明")
   };
 };
 

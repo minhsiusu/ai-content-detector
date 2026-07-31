@@ -1,9 +1,6 @@
 // Runs inside the active webpage and provides text/image selection tools.
 (() => {
   const PANEL_ID = "ai-detector-panel";
-  const OVERLAY_ID = "ai-detector-overlay";
-  const BOX_ID = "ai-detector-selection-box";
-  const MARKER_CLASS = "ai-detector-highlight";
 
   const oldInstance = window.__aiContentDetector;
   if (oldInstance) {
@@ -12,11 +9,6 @@
   }
 
   const state = {
-    selecting: false,
-    startX: 0,
-    startY: 0,
-    overlay: null,
-    box: null,
     highlightedRange: null,
     pendingSelectionText: "",
     pendingSelectionRange: null,
@@ -30,31 +22,11 @@
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
-  const removeElementHighlights = () => {
-    document.querySelectorAll(`.${MARKER_CLASS}`).forEach(element => {
-      element.classList.remove(
-        MARKER_CLASS,
-        "ai-detector-low",
-        "ai-detector-medium",
-        "ai-detector-high"
-      );
-      element.removeAttribute("data-ai-score");
-      element.querySelector(":scope > .ai-detector-badge")?.remove();
-    });
-  };
-
   const removeTextHighlight = () => {
     if (window.CSS && CSS.highlights) {
       CSS.highlights.delete("ai-detector-selection");
     }
     state.highlightedRange = null;
-  };
-
-  const removeOverlay = () => {
-    state.selecting = false;
-    state.overlay?.remove();
-    state.overlay = null;
-    state.box = null;
   };
 
   const stopImageSelection = () => {
@@ -67,9 +39,7 @@
   };
 
   const clearResults = () => {
-    removeElementHighlights();
     removeTextHighlight();
-    removeOverlay();
     stopImageSelection();
   };
 
@@ -104,7 +74,6 @@
   };
 
   const openMenu = () => {
-    removeOverlay();
     const currentSelection = window.getSelection();
     const currentText = currentSelection?.toString().trim() || "";
     if (currentText && currentSelection.rangeCount) {
@@ -116,20 +85,12 @@
       "選擇偵測方式",
       `
         <p class="ai-detector-hint">你想分析目前網頁的哪一部分？</p>
-        <button class="ai-detector-action" data-mode="article" type="button">
-          <span>▤</span>
-          <span><b>整篇文章</b><small>自動尋找主要文章段落</small></span>
-        </button>
         <button class="ai-detector-action" data-mode="selection" type="button">
           <span>▰</span>
           <span>
             <b>反白文字</b>
             <small>${selectionLength ? `已選取 ${selectionLength} 字` : "先在網頁反白一段文字"}</small>
           </span>
-        </button>
-        <button class="ai-detector-action" data-mode="area" type="button">
-          <span>⌗</span>
-          <span><b>拖曳框選</b><small>按住滑鼠左鍵拉出分析範圍</small></span>
         </button>
         <button class="ai-detector-action" data-mode="image" type="button">
           <span>▧</span>
@@ -144,9 +105,7 @@
     panel.querySelectorAll("[data-mode]").forEach(button => {
       button.addEventListener("click", () => {
         const mode = button.dataset.mode;
-        if (mode === "article") analyzeArticle();
         if (mode === "selection") analyzeSelection();
-        if (mode === "area") startAreaSelection();
         if (mode === "image") startImageSelection();
         if (mode === "clear") {
           clearResults();
@@ -154,46 +113,6 @@
         }
       });
     });
-  };
-
-  const findArticleRoot = () => {
-    const selectors = [
-      "article",
-      "[itemprop='articleBody']",
-      ".article-content",
-      ".post-content",
-      ".entry-content",
-      ".story-body",
-      "main"
-    ];
-
-    return selectors
-      .map(selector => document.querySelector(selector))
-      .find(element => element && element.innerText.trim().length >= 200);
-  };
-
-  const elementsToParagraphs = elements => {
-    const seen = new Set();
-
-    return elements
-      .filter(element => {
-        if (!element || seen.has(element)) return false;
-        seen.add(element);
-        return true;
-      })
-      .map((element, index) => ({
-        id: `ai-detector-${index}`,
-        element,
-        text: element.innerText.trim()
-      }))
-      .filter(item => item.text.length >= 30)
-      .slice(0, 100);
-  };
-
-  const extractArticleParagraphs = articleRoot => {
-    return elementsToParagraphs([
-      ...articleRoot.querySelectorAll("p, h2, h3, blockquote, li")
-    ]);
   };
 
   const sendForAnalysis = async paragraphs => {
@@ -213,12 +132,6 @@
     }
 
     return response.data;
-  };
-
-  const getRiskLabel = risk => {
-    if (risk === "high") return "高";
-    if (risk === "medium") return "中";
-    return "低";
   };
 
   const showResult = result => {
@@ -314,27 +227,7 @@
     });
   };
 
-  const highlightElements = (localParagraphs, results) => {
-    const resultMap = new Map(results.map(result => [result.id, result]));
-
-    localParagraphs.forEach(paragraph => {
-      const result = resultMap.get(paragraph.id);
-      if (!result) return;
-
-      paragraph.element.classList.add(
-        MARKER_CLASS,
-        `ai-detector-${result.risk}`
-      );
-      paragraph.element.dataset.aiScore = String(result.score);
-
-      const badge = document.createElement("span");
-      badge.className = `ai-detector-badge ai-detector-${result.risk}`;
-      badge.textContent = `${getRiskLabel(result.risk)} · ${result.score}%`;
-      paragraph.element.appendChild(badge);
-    });
-  };
-
-  const analyzeParagraphs = async (paragraphs, options = {}) => {
+  const analyzeParagraphs = async paragraphs => {
     if (!paragraphs.length) {
       throw new Error("選取範圍內找不到至少 30 字的文字");
     }
@@ -349,26 +242,7 @@
 
     const result = await sendForAnalysis(paragraphs);
 
-    if (options.highlightElements !== false) {
-      highlightElements(paragraphs, result.paragraphs);
-    }
     showResult(result);
-  };
-
-  const analyzeArticle = async () => {
-    clearResults();
-    const articleRoot = findArticleRoot();
-
-    if (!articleRoot) {
-      setPanel("無法分析", "找不到足夠長度的文章主體。", "error");
-      return;
-    }
-
-    try {
-      await analyzeParagraphs(extractArticleParagraphs(articleRoot));
-    } catch (error) {
-      setPanel("分析失敗", escapeHtml(error.message), "error");
-    }
   };
 
   const highlightSelectedRange = range => {
@@ -404,175 +278,10 @@
     selection?.removeAllRanges();
 
     try {
-      await analyzeParagraphs(
-        [{ id: "selected-text", text, element: null }],
-        { highlightElements: false }
-      );
+      await analyzeParagraphs([{ id: "selected-text", text }]);
     } catch (error) {
       setPanel("分析失敗", escapeHtml(error.message), "error");
     }
-  };
-
-  const getRect = () => {
-    const left = Math.min(state.startX, state.currentX);
-    const top = Math.min(state.startY, state.currentY);
-    const right = Math.max(state.startX, state.currentX);
-    const bottom = Math.max(state.startY, state.currentY);
-    return {
-      left,
-      top,
-      right,
-      bottom,
-      width: right - left,
-      height: bottom - top
-    };
-  };
-
-  const updateSelectionBox = () => {
-    const rect = getRect();
-    Object.assign(state.box.style, {
-      left: `${rect.left}px`,
-      top: `${rect.top}px`,
-      width: `${rect.width}px`,
-      height: `${rect.height}px`
-    });
-  };
-
-  const collectElementsInRect = rect => {
-    const walker = document.createTreeWalker(
-      document.body,
-      NodeFilter.SHOW_TEXT,
-      {
-        acceptNode(node) {
-          const text = node.nodeValue.replace(/\s+/g, " ").trim();
-          const parent = node.parentElement;
-          if (!text || !parent) return NodeFilter.FILTER_REJECT;
-          if (parent.closest(`#${PANEL_ID}, #${OVERLAY_ID}, script, style, noscript`)) {
-            return NodeFilter.FILTER_REJECT;
-          }
-          return NodeFilter.FILTER_ACCEPT;
-        }
-      }
-    );
-
-    const selectedNodes = [];
-    let node;
-
-    while ((node = walker.nextNode())) {
-      const range = document.createRange();
-      range.selectNodeContents(node);
-      const intersects = [...range.getClientRects()].some(box => (
-        box.right >= rect.left &&
-        box.left <= rect.right &&
-        box.bottom >= rect.top &&
-        box.top <= rect.bottom
-      ));
-      if (intersects) selectedNodes.push(node);
-      range.detach();
-    }
-
-    return selectedNodes;
-  };
-
-  const textNodesToParagraphs = nodes => {
-    const groups = new Map();
-
-    nodes.forEach(node => {
-      const parent = node.parentElement.closest(
-        "p, li, blockquote, h1, h2, h3, h4, article, section, div"
-      ) || node.parentElement;
-      const value = node.nodeValue.replace(/\s+/g, " ").trim();
-      if (!value) return;
-      const current = groups.get(parent) || [];
-      current.push(value);
-      groups.set(parent, current);
-    });
-
-    const paragraphs = [...groups.entries()]
-      .map(([element, values], index) => ({
-        id: `ai-detector-area-${index}`,
-        element,
-        text: values.join(" ").trim()
-      }))
-      .filter(item => item.text.length >= 30);
-
-    if (paragraphs.length) return paragraphs.slice(0, 100);
-
-    const combinedText = nodes
-      .map(node => node.nodeValue.replace(/\s+/g, " ").trim())
-      .filter(Boolean)
-      .join(" ");
-
-    if (combinedText.length < 30) return [];
-
-    return [{
-      id: "ai-detector-area-combined",
-      element: null,
-      text: combinedText
-    }];
-  };
-
-  const finishAreaSelection = async () => {
-    const rect = getRect();
-    const textNodes = collectElementsInRect(rect);
-    removeOverlay();
-
-    if (rect.width < 20 || rect.height < 20) {
-      openMenu();
-      return;
-    }
-
-    try {
-      const paragraphs = textNodesToParagraphs(textNodes);
-      await analyzeParagraphs(paragraphs, {
-        highlightElements: paragraphs.every(item => item.element)
-      });
-    } catch (error) {
-      setPanel("框選失敗", escapeHtml(error.message), "error");
-    }
-  };
-
-  const startAreaSelection = () => {
-    removeOverlay();
-    document.getElementById(PANEL_ID)?.remove();
-
-    const overlay = document.createElement("div");
-    overlay.id = OVERLAY_ID;
-    overlay.innerHTML = `
-      <div class="ai-detector-area-help">
-        按住滑鼠左鍵拖出範圍 · Esc 取消
-      </div>
-      <div id="${BOX_ID}"></div>
-    `;
-    document.body.appendChild(overlay);
-
-    state.overlay = overlay;
-    state.box = overlay.querySelector(`#${BOX_ID}`);
-
-    overlay.addEventListener("mousedown", event => {
-      if (event.button !== 0) return;
-      state.selecting = true;
-      state.startX = event.clientX;
-      state.startY = event.clientY;
-      state.currentX = event.clientX;
-      state.currentY = event.clientY;
-      updateSelectionBox();
-    });
-
-    overlay.addEventListener("mousemove", event => {
-      if (!state.selecting) return;
-      state.currentX = event.clientX;
-      state.currentY = event.clientY;
-      updateSelectionBox();
-    });
-
-    overlay.addEventListener("mouseup", event => {
-      if (!state.selecting || event.button !== 0) return;
-      state.currentX = event.clientX;
-      state.currentY = event.clientY;
-      state.selecting = false;
-      finishAreaSelection();
-    });
   };
 
   function handleImageHover(event) {
@@ -631,6 +340,52 @@
         : c2pa.signature === "invalid"
           ? "無效或不受信任"
           : "未確認";
+      const local = result.localForensics || {};
+      const localRiskLabel = risk => ({
+        low: "低",
+        medium: "中",
+        high: "高"
+      }[risk] || "未知");
+      const localForensicsPanel = local.available ? `
+        <div class="ai-detector-explanation">
+          <strong>本機影像鑑識（輔助訊號）</strong>
+          <div class="ai-detector-summary">
+            <div class="ai-detector-summary-row">
+              <span class="ai-detector-summary-label">圖片品質</span>
+              <span class="ai-detector-summary-value">${local.quality.quality === "acceptable" ? "良好" : "受限"}</span>
+            </div>
+            <div class="ai-detector-summary-row">
+              <span class="ai-detector-summary-label">解析度</span>
+              <span class="ai-detector-summary-value">${local.quality.width} × ${local.quality.height}</span>
+            </div>
+            <div class="ai-detector-summary-row">
+              <span class="ai-detector-summary-label">雜訊殘差</span>
+              <span class="ai-detector-summary-value">${localRiskLabel(local.noise.risk)}</span>
+            </div>
+            <div class="ai-detector-summary-row">
+              <span class="ai-detector-summary-label">頻率異常</span>
+              <span class="ai-detector-summary-value">${localRiskLabel(local.frequency.risk)}</span>
+            </div>
+            <div class="ai-detector-summary-row">
+              <span class="ai-detector-summary-label">邊緣一致性</span>
+              <span class="ai-detector-summary-value">${localRiskLabel(local.edges.risk)}</span>
+            </div>
+            <div class="ai-detector-summary-row">
+              <span class="ai-detector-summary-label">特徵穩定性</span>
+              <span class="ai-detector-summary-value">${local.stability.reliability === "high" ? "高" : local.stability.reliability === "medium" ? "中" : "低"}</span>
+            </div>
+          </div>
+          ${(local.quality.warnings || []).map(warning => `
+            <p class="ai-detector-warning">${escapeHtml(warning)}</p>
+          `).join("")}
+          <p class="ai-detector-warning">${escapeHtml(local.warning)}</p>
+        </div>
+      ` : `
+        <div class="ai-detector-explanation">
+          <strong>本機影像鑑識</strong>
+          <p>${escapeHtml(local.error || "本機輔助分析不可用")}</p>
+        </div>
+      `;
       const panel = setPanel(
         "圖片分析完成",
         `
@@ -687,6 +442,7 @@
             <strong>可能的生成器特徵</strong>
             <ul class="ai-detector-generators">${generatorItems}</ul>
           </div>` : ""}
+          ${localForensicsPanel}
           <p class="ai-detector-warning">${escapeHtml(result.warning)}</p>
           <button class="ai-detector-secondary" data-action="back" type="button">返回偵測選項</button>
         `,
@@ -699,7 +455,6 @@
   }
 
   const startImageSelection = () => {
-    removeOverlay();
     document.getElementById(PANEL_ID)?.remove();
     state.imagePicking = true;
     document.documentElement.classList.add("ai-detector-image-picking");
@@ -708,10 +463,6 @@
   };
 
   document.addEventListener("keydown", event => {
-    if (event.key === "Escape" && state.overlay) {
-      removeOverlay();
-      openMenu();
-    }
     if (event.key === "Escape" && state.imagePicking) {
       stopImageSelection();
       openMenu();
