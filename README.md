@@ -21,22 +21,6 @@ server/     Node.js + Express API
 
 ## 後端設定與啟動
 
-在 `server/.env` 設定：
-
-```dotenv
-PORT=3200
-
-GEMINI_ENABLED=true
-GEMINI_API_KEY=請填自己的金鑰
-GEMINI_MODEL=gemini-3.5-flash-lite
-
-SIGHTENGINE_ENABLED=true
-SIGHTENGINE_API_USER=請填自己的帳號
-SIGHTENGINE_API_SECRET=請填自己的密鑰
-```
-
-請勿提交 `server/.env` 或在前端程式放置 API Key。專案刻意不提供 `.env.example`；上方僅列出必要欄位。
-
 安裝、檢查、測試及啟動：
 
 ```powershell
