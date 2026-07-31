@@ -1,0 +1,6 @@
+node_modules/
+server/node_modules/
+server/.env
+server/tools/c2patool.exe
+*.log
+.DS_Store

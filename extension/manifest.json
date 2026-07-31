@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "AI 文章偵測器－開發版",
+  "version": "0.6.1",
+  "description": "分析目前網頁文章，並以顏色標記各段的 AI 文字特徵分數。",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://localhost:3200/*"
+  ],
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "action": {
+    "default_title": "偵測目前文章"
+  }
+}
