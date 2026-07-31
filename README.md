@@ -11,8 +11,6 @@ extension/  Chrome 擴充功能
 server/     Node.js + Express API
 ```
 
-本專案不包含舊有的 Nuxt、Vue、Firebase、購物網站或 Copyleaks 程式。
-
 ## 環境需求
 
 - Node.js 14.21.3 或更新版本
